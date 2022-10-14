@@ -23,6 +23,10 @@ class AppconfigStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+        self.__application_name = None
+        self.__environment_name = None
+        self.__configuration_profile_name = None
+
         self.application = aws_appconfig.CfnApplication(
                 self,
                 "TestingCfnApplication",
@@ -78,9 +82,41 @@ class AppconfigStack(Stack):
                 environment_id=self.environment_.ref
         )
 
+    @property
+    def application_name(self):
+        if self.__application_name is not None:
+            return self.__application_name
+        else:
+            self.__application_name = self.application.name
+            return self.__application_name
+
+    @property
+    def environment_name(self):
+        if self.__environment_name is not None:
+            return self.__environment_name
+        else:
+            self.__environment_name = self.environment_.name
+            return self.__environment_name
+
+    @property
+    def configuration_profile_name(self):
+        if self.__configuration_profile_name is not None:
+            return self.__configuration_profile_name
+        else:
+            self.__configuration_profile_name = self.configuration_profile.name
+            return self.__configuration_profile_name
+
 
 class FarGateTestApp(Stack):
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self,
+            scope: Construct,
+            construct_id: str,
+            *,
+            appconf_app_name: str,
+            appconf_env_name: str,
+            appconf_conf_prof_name: str,
+            **kwargs
+    ) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.fargate_service = ApplicationLoadBalancedFargateService(
             self,
@@ -91,8 +127,16 @@ class FarGateTestApp(Stack):
             circuit_breaker=DeploymentCircuitBreaker(rollback=True),
             task_image_options=ApplicationLoadBalancedTaskImageOptions(
                 container_name="testapp",
+                environment={
+                    "APPCONF_APP_NAME": appconf_app_name,
+                    "APPCONF_ENV_NAME": appconf_env_name,
+                    "APPCONF_CONF_PROF_NAME": appconf_conf_prof_name,
+                },
                 image=ContainerImage.from_registry("ojolanki/testapp"),
-                log_driver=LogDriver.aws_logs(stream_prefix="testapp", mode=AwsLogDriverMode.NON_BLOCKING)
+                log_driver=LogDriver.aws_logs(
+                    stream_prefix="testapp",
+                    mode=AwsLogDriverMode.NON_BLOCKING
+                )
             ),
             memory_limit_mib=512,
             public_load_balancer=True,
@@ -117,6 +161,9 @@ appconfigstack = AppconfigStack(
 testappstack= FarGateTestApp(
     app,
     "TestAppStack",
+    appconf_app_name=appconfigstack.application_name,
+    appconf_env_name=appconfigstack.environment_name,
+    appconf_conf_prof_name=appconfigstack.configuration_profile_name,
     env=ENVIRONMENT,
 )
 app.synth()

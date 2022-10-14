@@ -1,12 +1,16 @@
+import os
 from appconfig_helper import AppConfigHelper
 from fastapi import FastAPI
 
-app = FastAPI()
+APPCONF_APP_NAME = os.environ["APPCONF_APP_NAME"]
+APPCONF_ENV_NAME = os.environ["APPCONF_ENV_NAME"]
+APPCONF_CONF_PROF_NAME = os.environ["APPCONF_CONF_PROF_NAME"]
 
+app = FastAPI()
 appconfig = AppConfigHelper(
-    "testappconf",
-    "testingenv",
-    "testconfprofile",
+    APPCONF_APP_NAME, 
+    APPCONF_ENV_NAME,
+    APPCONF_CONF_PROF_NAME,
     15,
 )
 
