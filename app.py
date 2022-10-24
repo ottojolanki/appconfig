@@ -1,4 +1,5 @@
 import aws_cdk as cdk
+import json
 from aws_cdk import App
 from aws_cdk import Stack
 from aws_cdk import aws_appconfig
@@ -19,7 +20,7 @@ from constructs import Construct
 
 ENVIRONMENT = cdk.Environment(account="618537831167", region="us-west-2")
 
-class AppconfigStack(Stack):
+class AppConfigStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -38,31 +39,59 @@ class AppconfigStack(Stack):
                     )
                 ]
         )
-        self.application.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        #self.application.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         self.environment_ = aws_appconfig.CfnEnvironment(
                 self,
                 "TestingCfnEnvironment",
                 name="testingenv",
                 application_id=self.application.ref
         )
-        self.environment_.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        #self.environment_.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         self.configuration_profile = aws_appconfig.CfnConfigurationProfile(
                 self,
                 "TestingCfnConfigurationProfile",
                 application_id=self.application.ref,
                 name="testconfprofile",
+                type="AWS.AppConfig.FeatureFlags",
                 location_uri="hosted"
         )
-        self.configuration_profile.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        #self.configuration_profile.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         self.hosted_configuration_version = aws_appconfig.CfnHostedConfigurationVersion(
                 self,
                 "TestingCfnHostedConfigurationVersion",
                 application_id=self.application.ref,
                 configuration_profile_id=self.configuration_profile.ref,
                 content_type="application/json",
-                content='{"transform_reverse": true, "transform_allcaps": false}'
+                content=json.dumps({
+                    "version": "1",
+                    "flags": {
+                        "transform_reverse_enabled": {
+                            "name": "transform_reverse",
+                            "description": "flag to transform reverse or not",
+                            "attributes": {
+                                "transform": {
+                                    "description": "my attribute",
+                                    "constraints": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "do_this": {
+                                    "constraints": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        },
+                    },
+                    "values": {
+                        "transform_reverse_enabled": {
+                            "enabled": True,
+                            "transform": False,
+                            "do_this": "a task"
+                        },
+                    }
+                })
         )
-        self.hosted_configuration_version.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         self.deployment_strategy = aws_appconfig.CfnDeploymentStrategy(
                 self,
                 "TestingCfnDeploymentStrategy",
@@ -72,7 +101,7 @@ class AppconfigStack(Stack):
                 replicate_to="NONE",
                 final_bake_time_in_minutes=1
         )
-        self.deployment_strategy.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
+        #self.deployment_strategy.apply_removal_policy(cdk.RemovalPolicy.DESTROY)
         self.deployment = aws_appconfig.CfnDeployment(self,
                 "TestingCfnDeployment",
                 application_id=self.application.ref,
@@ -153,9 +182,9 @@ class FarGateTestApp(Stack):
         )
 
 app = App()
-appconfigstack = AppconfigStack(
+appconfigstack = AppConfigStack(
     app,
-    "AppconfigStack",
+    "AppConfigStack",
     env=ENVIRONMENT,
 )
 testappstack= FarGateTestApp(
